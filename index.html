@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎬 Movie & Series Availability</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #121212;
+            color: #fff;
+            padding: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #f9f9f9;
+        }
+
+        .group {
+            background-color: #1e1e2f;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .group-title {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            border-left: 5px solid #00bcd4;
+            padding-left: 0.5rem;
+        }
+
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #292942;
+            margin: 0.3rem 0;
+            padding: 0.7rem 1rem;
+            border-radius: 8px;
+            transition: background 0.2s ease;
+        }
+
+        .item:hover {
+            background-color: #353556;
+        }
+
+        .tag {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .available {
+            background-color: #4caf50;
+            color: white;
+        }
+
+        .not-available {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            background-color: #00bcd4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn:hover {
+            background-color: #008c9e;
+        }
+
+        .btn i {
+            margin-right: 8px;
+        }
+
+        .series-btn {
+            background-color: #ff9800;
+        }
+
+        .series-btn:hover {
+            background-color: #e68900;
+        }
+
+        @media (max-width: 600px) {
+            .item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .tag {
+                margin-top: 0.5rem;
+            }
+        }
+    </style>
+
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+</head>
+
+<body>
+    <h1>📺 Movie & Series Availability</h1>
+    <div id="content"></div>
+
+    <script>
+        google.charts.load('current', { 'packages': ['corechart'] });
+        google.charts.setOnLoadCallback(() => {
+            loadData();
+            setInterval(() => {
+                document.getElementById('content').innerHTML = ''; // Clear old data
+                loadData(); // Reload data every 60 seconds
+            }, 60000); // 60000 ms = 1 min
+        });
+
+        function loadData() {
+            const spreadsheetId = '1dntWHCxegIykwuGLZBvA2QcQj5FJMoZcSPRP-DFAIwc';
+            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?sheet=Sheet1`;
+
+            const query = new google.visualization.Query(url);
+            query.send(response => {
+                if (response.isError()) {
+                    console.error('Error loading sheet: ', response.getMessage());
+                    return;
+                }
+
+                const data = response.getDataTable();
+
+                // Manually adjust the column indices based on the returned data structure
+                const titleCol = 0; // Column A (Title)
+                const seriesCol = 1; // Column B (Series Name)
+                const availableCol = 2; // Column C (Available)
+
+                const grouped = {};
+
+                for (let i = 1; i < data.getNumberOfRows(); i++) {  // Start from 1 to skip the header row
+                    const title = data.getValue(i, titleCol) || '';
+                    const series = data.getValue(i, seriesCol) || 'Miscellaneous';
+                    const available = (data.getValue(i, availableCol) || '').toLowerCase() === 'yes';
+
+                    const item = {
+                        title: title,  // No season added here anymore
+                        available
+                    };
+
+                    if (!grouped[series]) grouped[series] = [];
+                    grouped[series].push(item);
+                }
+
+                renderUI(grouped);
+            });
+        }
+
+        function renderUI(data) {
+            const content = document.getElementById('content');
+
+            Object.entries(data).forEach(([group, items]) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'group';
+
+                const title = document.createElement('div');
+                title.className = 'group-title';
+                title.textContent = group;
+                groupDiv.appendChild(title);
+
+                // Add a button to request full series list
+                const seriesRequestBtn = document.createElement('button');
+                seriesRequestBtn.className = 'btn series-btn';
+                seriesRequestBtn.innerHTML = '<i class="fab fa-whatsapp"></i>Request Full Series';
+
+                // WhatsApp URL for the full series request
+                seriesRequestBtn.onclick = function () {
+                    const message = `Hi, Please send me the full series list for "${group}".`;
+                    const phoneNumber = '9064659661';
+                    const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+                    window.open(whatsappURL, '_blank');
+                };
+                groupDiv.appendChild(seriesRequestBtn);
+
+                items.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'item';
+
+                    const name = document.createElement('span');
+                    name.textContent = item.title;
+
+                    const tag = document.createElement('span');
+                    tag.className = 'tag ' + (item.available ? 'available' : 'not-available');
+                    tag.textContent = item.available ? 'Available' : 'Not Available';
+
+                    // Add a button to send a movie request to WhatsApp
+                    const button = document.createElement('button');
+                    button.className = 'btn';
+                    button.innerHTML = '<i class="fab fa-whatsapp"></i>Send Request';
+
+                    // WhatsApp URL to send the request
+                    button.onclick = function () {
+                        const message = `Hi, Please send me the link for "${item.title}".`;
+                        const phoneNumber = '9064659660';
+                        const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+                        window.open(whatsappURL, '_blank');
+                    };
+
+                    itemDiv.appendChild(name);
+                    itemDiv.appendChild(tag);
+                    itemDiv.appendChild(button);  // Add the button to each item
+                    groupDiv.appendChild(itemDiv);
+                });
+
+                content.appendChild(groupDiv);
+            });
+        }
+    </script>
+</body>
+
+</html>
